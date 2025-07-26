@@ -30,6 +30,9 @@ jobs:
           shell: bash
           options: -v ${{ github.workspace }}/local:/root/.local -v ${{ github.workspace }}/config/nvim/init.lua:/root/.config/nvim/init.lua -v ${{ github.workspace }}/ts-install-all.mjs:/root/script.mjs -v ${{ github.workspace }}/ts-update.mjs:/root/update.mjs
           run: |
+            # Use archive.debian.org for Debian Jessie
+            echo "deb http://archive.debian.org/debian jessie main" > /etc/apt/sources.list
+            echo "deb http://archive.debian.org/debian-security jessie/updates main" >> /etc/apt/sources.list
             apt-get update -y
             apt-get install -y build-essential git curl wget ca-certificates
             
