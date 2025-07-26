@@ -26,27 +26,36 @@ jobs:
       - name: Build
         uses: addnab/docker-run-action@v3
         with:
-          image: ubuntu:focal
+          image: debian:jessie
           shell: bash
           options: -v ${{ github.workspace }}/local:/root/.local -v ${{ github.workspace }}/config/nvim/init.lua:/root/.config/nvim/init.lua -v ${{ github.workspace }}/ts-install-all.mjs:/root/script.mjs -v ${{ github.workspace }}/ts-update.mjs:/root/update.mjs
           run: |
-            apt-get update -y && apt-get upgrade -y
-            apt install build-essential git curl wget ca-certificates gnupg -y
-            mkdir -p /etc/apt/keyrings
-            curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-            apt-get update && apt-get install nodejs -y
+            apt-get update -y
+            apt-get install -y build-essential git curl wget ca-certificates
+            
+            # Install Node.js 18 for Debian Jessie
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+            apt-get install -y nodejs
+            
+            # Download and extract Neovim binary from statiolake/neovim-binaries
+            LATEST_RELEASE=$(curl -s https://api.github.com/repos/statiolake/neovim-binaries/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\([^"]*\)".*/\1/')
             if [ "${{ matrix.arch }}" = "arm64" ]; then
-              wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-arm64.appimage
+              wget -O nvim.tar.gz "https://github.com/statiolake/neovim-binaries/releases/download/${LATEST_RELEASE}/nvim-linux-arm64.tar.gz"
             else
-              wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.appimage
+              wget -O nvim.tar.gz "https://github.com/statiolake/neovim-binaries/releases/download/${LATEST_RELEASE}/nvim-linux-x86_64.tar.gz"
             fi
-            chmod a+x ./nvim.appimage
-            ./nvim.appimage --appimage-extract
-            ./squashfs-root/usr/bin/nvim --version
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'TSConfigInfo' -c 'quitall'
+            
+            # Extract Neovim
+            tar -xzf nvim.tar.gz
+            export PATH="$(pwd)/nvim-linux/bin:$PATH"
+            
+            # Verify Neovim installation
+            nvim --version
+            
+            # Run Neovim setup
+            nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+            nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+            nvim --headless -c 'TSConfigInfo' -c 'quitall'
             node /root/script.mjs
             node /root/update.mjs
 
