@@ -5,9 +5,16 @@ on:
     - cron: "0 2 */2 * *" # run every 2 days at 2 AM UTC
 
 jobs:
-  linux:
-    name: Build for linux
-    runs-on: ubuntu-latest
+  build:
+    name: Build for Linux ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -39,161 +46,58 @@ jobs:
             node /root/script.mjs
             node /root/update.mjs
 
-      - name: Zip Binary
+      - name: Create Tarball
         run: |
-          zip -j linux.zip local/share/nvim/site/pack/packer/start/nvim-treesitter/parser/*
+          tar -czf all-linux-${{ matrix.arch }}.tar.gz -C local/share/nvim/site/pack/packer/start/nvim-treesitter/parser .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux
-          path: |
-            linux.zip
-
-  android-aarch64-termux:
-    name: Build for android-aarch64-termux
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup
-        run: |
-          git clone --depth 1 https://github.com/wbthomason/packer.nvim local/share/nvim/site/pack/packer/start/packer.nvim
-
-      - name: Build
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ubuntu:focal
-          shell: bash
-          options: -v ${{ github.workspace }}/local:/root/.local -v ${{ github.workspace }}/config/nvim/init.lua:/root/.config/nvim/init.lua -v ${{ github.workspace }}/ts-install-all.mjs:/root/script.mjs -v ${{ github.workspace }}/ts-update.mjs:/root/update.mjs
-          run: |
-            apt-get update -y && apt-get upgrade -y
-            apt install git curl wget unzip patchelf ca-certificates gnupg -y
-            mkdir -p /etc/apt/keyrings
-            curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-            apt-get update && apt-get install nodejs -y
-            wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
-            unzip android-ndk-r25c-linux.zip -d "$HOME"
-            export PATH="$HOME/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
-            wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.appimage
-            chmod a+x ./nvim.appimage
-            ./nvim.appimage --appimage-extract
-            ./squashfs-root/usr/bin/nvim --version
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'TSConfigInfo' -c 'quitall'
-            node /root/script.mjs
-            node /root/update.mjs
-            for f in $(find "$HOME/.local/share/nvim/site/pack/packer/start/nvim-treesitter/parser" -iname "*.so"); do patchelf --set-rpath "/data/data/com.termux/files/usr/lib" "$f"; done
-
-      - name: Zip Binary
-        run: |
-          zip -j android-aarch64-termux.zip local/share/nvim/site/pack/packer/start/nvim-treesitter/parser/*
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-aarch64-termux
-          path: |
-            android-aarch64-termux.zip
-
-  windows:
-    name: Build for windows
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup
-        run: |
-          git clone --depth 1 https://github.com/wbthomason/packer.nvim local/share/nvim/site/pack/packer/start/packer.nvim
-
-      - name: Build
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ubuntu:focal
-          shell: bash
-          options: -v ${{ github.workspace }}/local:/root/.local -v ${{ github.workspace }}/config/nvim/init.lua:/root/.config/nvim/init.lua -v ${{ github.workspace }}/ts-install-all.mjs:/root/script.mjs -v ${{ github.workspace }}/ts-update.mjs:/root/update.mjs
-          run: |
-            apt-get update -y && apt-get upgrade -y
-            apt install build-essential git curl wget mingw-w64 ca-certificates gnupg -y
-            mkdir -p /etc/apt/keyrings
-            curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-            apt-get update && apt-get install nodejs -y
-            wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.appimage
-            chmod a+x ./nvim.appimage
-            ./nvim.appimage --appimage-extract
-            ./squashfs-root/usr/bin/nvim --version
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
-            ./squashfs-root/usr/bin/nvim --headless -c 'TSConfigInfo' -c 'quitall'
-            node /root/script.mjs
-            node /root/update.mjs
-
-      - name: Zip Binary
-        run: |
-          zip -j windows.zip local/share/nvim/site/pack/packer/start/nvim-treesitter/parser/*
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows
-          path: |
-            windows.zip
+          name: all-linux-${{ matrix.arch }}
+          path: all-linux-${{ matrix.arch }}.tar.gz
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [linux, windows, android-aarch64-termux]
-    strategy:
-      matrix:
-        tag: [linux, windows, android-aarch64-termux]
+    needs: [build]
     permissions:
       contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Download Artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.tag }}
-          path: files
 
-      - name: Unzip Binary
+      - name: Create release
         run: |
-          unzip -j files/${{ matrix.tag }}.zip -d files
-          mv files/${{ matrix.tag }}.zip all.zip
+          # Generate date-based tag
+          TAG=$(date '+%Y%m%d')
+          
+          # Create release notes
+          echo "# Neovim TreeSitter Binaries - $TAG" > release_notes.md
+          echo "" >> release_notes.md
+          echo "Built on $(date '+%Y-%m-%d %H:%M:%S UTC')" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Downloads" >> release_notes.md
+          echo "- **all-linux-x86_64.tar.gz**: TreeSitter parsers for Linux x86_64" >> release_notes.md
+          echo "- **all-linux-arm64.tar.gz**: TreeSitter parsers for Linux ARM64" >> release_notes.md
+          echo "" >> release_notes.md
+          
+          # List supported parsers from x86_64 build (should be same for both architectures)
+          echo "<details>" >> release_notes.md
+          echo "<summary>Supported parsers (click to expand)</summary>" >> release_notes.md
+          echo "" >> release_notes.md
+          tar -tzf all-linux-x86_64/all-linux-x86_64.tar.gz | sort | sed 's/^/- /' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "</details>" >> release_notes.md
 
-      - name: Create Body Release
-        run: |
-          echo "BUILD: $(date '+%Y-%m-%d')" > body.md
-          echo "<details>" >> body.md
-          echo -e "  <summary>click to show supported parser ($(ls files | wc -l))</summary>\n" >> body.md
-          for parser in $(ls files | sort); do echo "  - $parser" >> body.md; done
-          echo -e "\n</details>" >> body.md
+          # Create release
+          gh release create "$TAG" \
+            --title "TreeSitter Binaries $TAG" \
+            --notes-file release_notes.md \
+            all-linux-x86_64/all-linux-x86_64.tar.gz \
+            all-linux-arm64/all-linux-arm64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Release and Upload Assets
-        uses: ncipollo/release-action@v1.10.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          allowUpdates: true
-          tag: ${{ matrix.tag }}
-          prerelease: true
-          name: ${{ matrix.tag }}
-          artifacts: all.zip
-          bodyFile: body.md
-
-  del_runs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
-        with:
-          token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          retain_days: 30
-          keep_minimum_runs: 3
