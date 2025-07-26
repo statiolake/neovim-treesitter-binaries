@@ -35,26 +35,22 @@ jobs:
             echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list
             apt-get update -y
             apt-get install -y build-essential git curl wget ca-certificates
-            
+
             # Install Node.js 18 for Debian Stretch
             curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
             apt-get install -y nodejs
-            
+
             # Download and extract Neovim binary from statiolake/neovim-binaries
             LATEST_RELEASE=$(curl -s https://api.github.com/repos/statiolake/neovim-binaries/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\([^"]*\)".*/\1/')
-            if [ "${{ matrix.arch }}" = "arm64" ]; then
-              wget -O nvim.tar.gz "https://github.com/statiolake/neovim-binaries/releases/download/${LATEST_RELEASE}/nvim-linux-arm64.tar.gz"
-            else
-              wget -O nvim.tar.gz "https://github.com/statiolake/neovim-binaries/releases/download/${LATEST_RELEASE}/nvim-linux-x86_64.tar.gz"
-            fi
-            
+            wget -O nvim.tar.gz "https://github.com/statiolake/neovim-binaries/releases/download/${LATEST_RELEASE}/nvim-linux-${{ matrix.arch }}.tar.gz"
+
             # Extract Neovim
             tar -xzf nvim.tar.gz
-            export PATH="$(pwd)/nvim-linux/bin:$PATH"
-            
+            export PATH="$(pwd)/nvim-linux-${{ matrix.arch }}/bin:$PATH"
+
             # Verify Neovim installation
             nvim --version
-            
+
             # Run Neovim setup
             nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
             nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
@@ -89,7 +85,7 @@ jobs:
         run: |
           # Generate date-based tag
           TAG=$(date '+%Y%m%d')
-          
+
           # Create release notes
           echo "# Neovim TreeSitter Binaries - $TAG" > release_notes.md
           echo "" >> release_notes.md
@@ -99,7 +95,7 @@ jobs:
           echo "- **all-linux-x86_64.tar.gz**: TreeSitter parsers for Linux x86_64" >> release_notes.md
           echo "- **all-linux-arm64.tar.gz**: TreeSitter parsers for Linux ARM64" >> release_notes.md
           echo "" >> release_notes.md
-          
+
           # List supported parsers from x86_64 build (should be same for both architectures)
           echo "<details>" >> release_notes.md
           echo "<summary>Supported parsers (click to expand)</summary>" >> release_notes.md
@@ -116,4 +112,3 @@ jobs:
             all-linux-arm64/all-linux-arm64.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
