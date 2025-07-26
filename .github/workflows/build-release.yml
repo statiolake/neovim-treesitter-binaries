@@ -36,7 +36,11 @@ jobs:
             curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
             echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
             apt-get update && apt-get install nodejs -y
-            wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.appimage
+            if [ "${{ matrix.arch }}" = "arm64" ]; then
+              wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-arm64.appimage
+            else
+              wget -O nvim.appimage https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.appimage
+            fi
             chmod a+x ./nvim.appimage
             ./nvim.appimage --appimage-extract
             ./squashfs-root/usr/bin/nvim --version
