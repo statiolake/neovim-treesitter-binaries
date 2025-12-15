@@ -14,7 +14,8 @@ apt-get install -y build-essential git curl wget ca-certificates coreutils
 
 # Clone nvim-treesitter directly to pack/start (no packer needed)
 mkdir -p /root/.local/share/nvim/site/pack/treesitter/start
-git clone --depth 1 https://github.com/nvim-treesitter/nvim-treesitter /root/.local/share/nvim/site/pack/treesitter/start/nvim-treesitter
+# Now the default branch of nvim-treesitter is "main", but currently this script is not compatible with latest one. So we still use backward-compatible "master" branch.
+git clone --depth 1 --branch master https://github.com/nvim-treesitter/nvim-treesitter /root/.local/share/nvim/site/pack/treesitter/start/nvim-treesitter
 
 # Download and extract Neovim binary from statiolake/neovim-binaries
 LATEST_RELEASE=$(curl -s https://api.github.com/repos/statiolake/neovim-binaries/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\([^"]*\)".*/\1/')
