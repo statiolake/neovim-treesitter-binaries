@@ -21,14 +21,12 @@ jobs:
 
 
       - name: Build
-        uses: addnab/docker-run-action@v3
-        with:
-          image: debian:stretch
-          shell: bash
-          options: -v ${{ github.workspace }}/build.sh:/root/build.sh -v ${{ github.workspace }}/output:/output
-          run: |
-            chmod +x /root/build.sh
-            /root/build.sh ${{ matrix.arch }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/build.sh:/root/build.sh \
+            -v ${{ github.workspace }}/output:/output \
+            debian:stretch \
+            bash -c "chmod +x /root/build.sh && /root/build.sh ${{ matrix.arch }}"
 
       - name: Create Tarball
         run: |
